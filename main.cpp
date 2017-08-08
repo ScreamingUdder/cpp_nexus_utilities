@@ -33,5 +33,11 @@ int main(int argc, char *argv[])
 
         // Detector Pixels
         Pixels detectorPixels = transforms * pixelOffsets;
+        H5std_string name = iter->getObjName();
+
+        //Call write function
+        nexusFile.writeToFile (detectorPixels, name);
+
+
     }
 }

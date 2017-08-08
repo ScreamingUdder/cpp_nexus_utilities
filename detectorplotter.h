@@ -29,6 +29,8 @@ public:
     Eigen::Transform<double, 3, Eigen::Affine> getTransformations(H5::Group &detectorGroup);
     //Gets the data from a string dataset
     H5std_string get1DStringDataset(H5std_string &dataset);
+    //Writes detector pixel offsets to file
+    void writeToFile(Eigen::Matrix<double, 3, Eigen::Dynamic> &detectorPixels, H5std_string name);
 
 private:
     //Nexus file

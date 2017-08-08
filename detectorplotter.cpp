@@ -5,6 +5,9 @@
 
 #include "H5Cpp.h"
 
+#include <algorithm>
+#include <iostream>
+#include <fstream>
 #include<string>
 #include<vector>
 
@@ -307,4 +310,20 @@ Eigen::Transform<double, 3, Eigen::Affine> DetectorPlotter::getTransformations(G
 
     }
     return transforms;
+}
+
+
+//Writes detector plotter to file
+void DetectorPlotter::writeToFile (Pixels &detectorPixels, H5std_string name)
+{
+    //Open data File
+    std::ofstream dataFile;
+    H5std_string filename = name.substr (name.find_last_of ("/") + 1) + ".txt";
+    dataFile.open(filename, std::ofstream::out);
+
+    //Write to file
+    dataFile << detectorPixels << std::endl;
+
+    dataFile.close();
+
 }
