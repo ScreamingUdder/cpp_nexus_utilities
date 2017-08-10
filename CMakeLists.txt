@@ -13,9 +13,6 @@ find_package(HDF5 COMPONENTS CXX HL REQUIRED)
 set( HDF5_INCLUDE_DIRECTORIES
     /usr/lib/x86_64-linux-gnu/hdf5/serial/include)
 
-set( PYTHON_INCLUDE_DIRECTORIES
-    /usr/include/python3.5)
-
 INCLUDE_DIRECTORIES( ${HDF5_INCLUDE_DIRECTORIES} ${PYTHON_INCLUDE_DIRECTORIES})
 
 target_link_libraries(${PROJECT_NAME}
