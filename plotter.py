@@ -12,7 +12,6 @@ for file in os.listdir(location):
 
     except Exception as e:
         raise e
-        print("No files found here!")
 print(txtfiles)
 
 # Initialise plot
@@ -26,12 +25,11 @@ for filename in txtfiles:
     for line in file:
         data[dim] = line.split()
         dim += 1
-    #Add to plot
-    ax[0].scatter(data[0], data[1], s=0.75, marker='x') #x and y
-    ax[1].scatter(data[0], data[2], s=0.75, marker='x') #x and z
+    # Add to plot
+    ax[0].scatter(data[0], data[1], s=0.75, marker='x')  # x and y
+    ax[1].scatter(data[0], data[2], s=0.75, marker='x')  # x and z
 
 ax[0].set_title('XY-plane pixel locations')
 ax[1].set_title('XZ-plane pixel locations')
 plt.axis('equal')
 plt.show()
-    
