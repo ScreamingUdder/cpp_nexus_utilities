@@ -1,14 +1,11 @@
 # cpp_nexus_utilities
 
 Parses the OFF instrument definition format embedded in NeXus files.
-The pixel offsets can be plotted using the given python script.
+The pixel offsets can be plotted using the given provided script.
 
 # Building using CMake
 If necessary, the path to the HDF5 header files should be updated to the current include path.  CMake can then be configured
 and generated, before building.
-
-# Other setup
-"plotter.py" must be copied into the build directory.
 
 # Running
 The resulting excecutable ("detector_plotter") can be run from the command line with a single argument.

@@ -18,3 +18,5 @@ INCLUDE_DIRECTORIES( ${HDF5_INCLUDE_DIRECTORIES} ${PYTHON_INCLUDE_DIRECTORIES})
 target_link_libraries(${PROJECT_NAME}
     ${HDF5_LIBRARIES}
     ${HDF5_CXX_LIBRARIES})
+
+configure_file(plotter.py plotter.py COPYONLY)
