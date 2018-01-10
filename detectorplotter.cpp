@@ -113,7 +113,9 @@ Pixels DetectorPlotter::getPixelOffsets(Group &detectorGroup) {
   std::vector<double> xValues, yValues, zValues;
   for (hsize_t i = 0; i < detectorGroup.getNumObjs(); i++) {
     H5std_string objName = detectorGroup.getObjnameByIdx(i);
-    H5std_string objPath = detectorName + "/" + objName;
+    H5std_string objPath = detectorName;
+    objPath += "/";
+    objPath += objName;
     if (objName == X_PIXEL_OFFSET) {
       xValues = DetectorPlotter::get1DDataset<double>(objPath);
     }
@@ -174,7 +176,7 @@ std::vector<valueType> DetectorPlotter::get1DDataset(H5std_string &dataset) {
 
   // Create vector to hold data
   std::vector<valueType> values;
-  values.resize(dataSpace.getSelectNpoints());
+  values.resize(static_cast<uint64_t>(dataSpace.getSelectNpoints()));
 
   // Read data into vector
   data.read(values.data(), dataType, dataSpace);
@@ -226,7 +228,7 @@ DetectorPlotter::getTransformations(Group &detectorGroup) {
     // Container for transformation type
     H5std_string transformType;
 
-    for (int i = 0; i < transformation.getNumAttrs(); i++) {
+    for (uint32_t i = 0; i < transformation.getNumAttrs(); i++) {
       // Open attribute at current index
       Attribute attribute = transformation.openAttribute(i);
 
@@ -249,7 +251,7 @@ DetectorPlotter::getTransformations(Group &detectorGroup) {
         DataSpace dataSpace = attribute.getSpace();
 
         // Resize vector to hold data
-        unitVector.resize(dataSpace.getSelectNpoints());
+        unitVector.resize(static_cast<uint64_t>(dataSpace.getSelectNpoints()));
 
         // Read the data into Eigen vector
         attribute.read(dataType, unitVector.data());
@@ -263,13 +265,13 @@ DetectorPlotter::getTransformations(Group &detectorGroup) {
       // Translation = magnitude*unitVector
       transformVector *= magnitude;
       Eigen::Translation3d translation(transformVector);
-      transforms *= translation;
+      transforms = translation * transforms;
     } else if (transformType == ROTATION) {
       // Convert angle from degrees to radians
       double angle = magnitude * 2 * PI / DEGREES_IN_CIRCLE;
 
       Eigen::AngleAxisd rotation(angle, transformVector);
-      transforms *= rotation;
+      transforms = rotation * transforms;
     }
   }
   return transforms;
