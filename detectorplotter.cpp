@@ -5,8 +5,7 @@
 
 using namespace H5;
 
-// Eigen typedefs
-typedef Eigen::Matrix<double, 3, Eigen::Dynamic> Pixels;
+using Pixels = Eigen::Matrix<double, 3, Eigen::Dynamic>;
 
 namespace {
 const H5G_obj_t GROUP_TYPE = static_cast<H5G_obj_t>(0);
@@ -26,24 +25,19 @@ const double PI = 3.1415926535;
 const double DEGREES_IN_CIRCLE = 360;
 }
 
-// Constructor
 DetectorPlotter::DetectorPlotter(const H5std_string &FILE_NAME) {
-  // Open nexus file
   H5File nexusFile(FILE_NAME, H5F_ACC_RDONLY);
   DetectorPlotter::file = nexusFile;
-  // Initialise root group
   DetectorPlotter::rootGroup = DetectorPlotter::file.openGroup("/");
 }
 
-// Destructor
 DetectorPlotter::~DetectorPlotter() {
-  // Close file
   DetectorPlotter::file.close();
 }
 
-// Open sub groups of choosen classType
-std::vector<Group> DetectorPlotter::openSubGroups(Group &parentGroup,
-                                                  const H5std_string &CLASS_TYPE) {
+std::vector<Group>
+DetectorPlotter::openSubGroups(Group &parentGroup,
+                               const H5std_string &CLASS_TYPE) {
   std::vector<Group> subGroups;
 
   // Iterate over parentGroup's children
@@ -76,7 +70,6 @@ std::vector<Group> DetectorPlotter::openSubGroups(Group &parentGroup,
   return subGroups;
 }
 
-// Open all detector groups into a vector
 std::vector<Group> DetectorPlotter::openDetectorGroups() {
   std::vector<Group> rawDataGroupPaths = DetectorPlotter::openSubGroups(
       DetectorPlotter::rootGroup, Nexus::NX_ENTRY);
@@ -104,11 +97,9 @@ std::vector<Group> DetectorPlotter::openDetectorGroups() {
   return detectorGroupPaths;
 }
 
-// Function to return the (x,y,z) offsets of pixels in the chosen detector
 Pixels DetectorPlotter::getPixelOffsets(Group &detectorGroup) {
   H5std_string detectorName = detectorGroup.getObjName();
 
-  // Initialise matrix
   Pixels offsetData;
   std::vector<double> xValues, yValues, zValues;
   for (hsize_t i = 0; i < detectorGroup.getNumObjs(); i++) {
@@ -157,58 +148,38 @@ Pixels DetectorPlotter::getPixelOffsets(Group &detectorGroup) {
     for (int i = 0; i < rowLength; i++)
       offsetData(2, i) = zValues[i];
   }
-  // Return the coordinate matrix
   return offsetData;
 }
 
-// Function to read in a dataset into a vector
 template <typename valueType>
 std::vector<valueType> DetectorPlotter::get1DDataset(H5std_string &dataset) {
 
-  // Open data set
   DataSet data = DetectorPlotter::file.openDataSet(dataset);
-
-  // Get data type
   DataType dataType = data.getDataType();
-
-  // Get data size
   DataSpace dataSpace = data.getSpace();
 
-  // Create vector to hold data
   std::vector<valueType> values;
   values.resize(static_cast<uint64_t>(dataSpace.getSelectNpoints()));
-
-  // Read data into vector
   data.read(values.data(), dataType, dataSpace);
 
-  // Return the data vector
   return values;
 }
 
 H5std_string DetectorPlotter::get1DStringDataset(H5std_string &dataset) {
-  // Open data set
   DataSet data = DetectorPlotter::file.openDataSet(dataset);
-  // Get size
   DataSpace dataspace = data.getSpace();
-  // Initialize string
   H5std_string value;
 
-  // Read into string
   data.read(value, data.getDataType(), dataspace);
 
   return value;
 }
 
-// Function to get the transformations from the nexus file, and create the Eigen
-// transform object
 Eigen::Transform<double, 3, Eigen::Affine>
 DetectorPlotter::getTransformations(Group &detectorGroup) {
-  // Get path to depends_on file
   H5std_string detectorPath = detectorGroup.getObjName();
   H5std_string depends_on = detectorPath + "/" + DEPENDS_ON;
-
-  // Get absolute dependency path
-  H5std_string dependency = DetectorPlotter::get1DStringDataset(depends_on);
+  H5std_string dependencyPath = DetectorPlotter::get1DStringDataset(depends_on);
 
   // Initialise transformation holder as zero-degree rotation
   Eigen::Transform<double, 3, Eigen::Affine> transforms;
@@ -217,59 +188,35 @@ DetectorPlotter::getTransformations(Group &detectorGroup) {
 
   // Breaks when no more dependencies (dependency = ".")
   // Transformations must be applied in opposite order to direction of discovery
-  while (dependency != NO_DEPENDENCY) {
-    // Open the transformation data set
-    DataSet transformation = DetectorPlotter::file.openDataSet(dependency);
+  while (dependencyPath != NO_DEPENDENCY) {
+    DataSet transformation = DetectorPlotter::file.openDataSet(dependencyPath);
 
-    // Get magnitude of current transformation
-    double magnitude = DetectorPlotter::get1DDataset<double>(dependency)[0];
-    // Container for unit vector of transformation
+    double magnitude = DetectorPlotter::get1DDataset<double>(dependencyPath)[0];
     Eigen::Vector3d transformVector;
-    // Container for transformation type
     H5std_string transformType;
 
     for (uint32_t i = 0; i < transformation.getNumAttrs(); i++) {
-      // Open attribute at current index
       Attribute attribute = transformation.openAttribute(i);
 
       // Get next dependency
       if (attribute.getName() == DEPENDS_ON) {
         DataType dataType = attribute.getDataType();
-        attribute.read(dataType, dependency);
+        attribute.read(dataType, dependencyPath);
       }
       // Get transform type
       if (attribute.getName() == TRANSFORMATION_TYPE) {
         DataType dataType = attribute.getDataType();
         attribute.read(dataType, transformType);
       }
-      // Get unit vector for transformation
-      if (attribute.getName() == VECTOR) {
-        std::vector<double> unitVector;
-        DataType dataType = attribute.getDataType();
-
-        // Get data size
-        DataSpace dataSpace = attribute.getSpace();
-
-        // Resize vector to hold data
-        unitVector.resize(static_cast<uint64_t>(dataSpace.getSelectNpoints()));
-
-        // Read the data into Eigen vector
-        attribute.read(dataType, unitVector.data());
-        transformVector(0) = unitVector[0];
-        transformVector(1) = unitVector[1];
-        transformVector(2) = unitVector[2];
-      }
+      getTransformationVector(transformVector, attribute);
     }
-    // Transform_type = translation
     if (transformType == TRANSLATION) {
       // Translation = magnitude*unitVector
       transformVector *= magnitude;
       Eigen::Translation3d translation(transformVector);
       transforms = translation * transforms;
     } else if (transformType == ROTATION) {
-      // Convert angle from degrees to radians
-      double angle = magnitude * 2 * PI / DEGREES_IN_CIRCLE;
-
+      double angle = degrees_to_radians(magnitude);
       Eigen::AngleAxisd rotation(angle, transformVector);
       transforms = rotation * transforms;
     }
@@ -277,15 +224,32 @@ DetectorPlotter::getTransformations(Group &detectorGroup) {
   return transforms;
 }
 
-// Writes detector plotter to file
-void DetectorPlotter::writeToFile(Pixels &detectorPixels, const H5std_string &name) {
-  // Open data File
+double DetectorPlotter::degrees_to_radians(double angle_in_degrees) const {
+  return angle_in_degrees * 2 * PI / DEGREES_IN_CIRCLE;
+}
+
+void DetectorPlotter::getTransformationVector(
+    Eigen::Vector3d &transformVector, const Attribute &attribute) const {
+  if (attribute.getName() == VECTOR) {
+    std::vector<double> unitVector;
+    DataType dataType = attribute.getDataType();
+
+    DataSpace dataSpace = attribute.getSpace();
+    unitVector.resize(static_cast<uint64_t>(dataSpace.getSelectNpoints()));
+
+    attribute.read(dataType, unitVector.data());
+    transformVector(0) = unitVector[0];
+    transformVector(1) = unitVector[1];
+    transformVector(2) = unitVector[2];
+  }
+}
+
+void DetectorPlotter::writeToFile(Pixels &detectorPixels,
+                                  const H5std_string &name) {
   std::ofstream dataFile;
   H5std_string filename = name.substr(name.find_last_of('/') + 1) + ".txt";
   dataFile.open(filename, std::ofstream::out);
 
-  // Write to file
   dataFile << detectorPixels << std::endl;
-
   dataFile.close();
 }

@@ -70,5 +70,8 @@ Thumbs.db
 *.dll
 *.exe
 
+# JetBrains IDEs
+.idea*
+
 
 CMakeLists.txt.user
